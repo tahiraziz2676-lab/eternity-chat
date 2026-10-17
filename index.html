@@ -3,7 +3,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#11131d">
-  <title>Eternity ❤️</title>
+  <title>Eternity </title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -71,7 +71,7 @@
 </head>
 <body>
   <main class="card">
-    <h1>❤️ Eternity</h1>
+    <h1> Eternity</h1>
     <p class="subtitle">A little place for just us.</p><section id="login">
   <input id="email" type="email" placeholder="Email address" autocomplete="username">
   <input id="password" type="password" placeholder="Password" autocomplete="current-password">
@@ -82,7 +82,7 @@
   <p id="who" class="subtitle"></p>
   <div id="messages" aria-live="polite"></div>
   <input id="messageInput" maxlength="2000" placeholder="Write a message...">
-  <button id="sendBtn">Send ❤️</button>
+  <button id="sendBtn">Send </button>
   <button id="logoutBtn">Log Out</button>
   <p class="note">Basic chat prototype. Messages are not yet end-to-end encrypted. Do not use this version for sensitive conversations.</p>
 </section>
@@ -163,8 +163,8 @@
 
           const sender = document.createElement("div");
           sender.className = "sender";
-          sender.textContent = data.sender || "Member";
-
+          sender.textContent =
+  data.senderUid === user.uid ? "You " : "We ";
           const text = document.createElement("div");
           text.textContent = typeof data.text === "string" ? data.text : "";
 
