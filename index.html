@@ -1,8 +1,214 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyBqIB8vtiJ58SzmCD_2zWcZF-c1U9R7oq8",
-  authDomain: "eternity-3114.firebaseapp.com",
-  projectId: "eternity-3114",
-  storageBucket: "eternity-3114.firebasestorage.app",
-  messagingSenderId: "10993754208",
-  appId: "1:10993754208:web:e219b378c70cc09e892305"
-};
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11131d">
+  <title>Eternity ❤️</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      background: #11131d;
+      color: #fff;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: #1c2030;
+      padding: 22px;
+      border-radius: 20px;
+      box-shadow: 0 12px 35px #0005;
+    }
+    h1 { text-align: center; color: #ff82ad; }
+    .subtitle { text-align: center; color: #c2c6d6; }
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input {
+      border: 1px solid #424961;
+      background: #11131d;
+      color: white;
+    }
+    button {
+      border: none;
+      background: #ff82ad;
+      color: #24131c;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; }
+    #chat { display: none; }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      background: #11131d;
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 15px;
+    }
+    .message {
+      background: #292f45;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow-wrap: anywhere;
+    }
+    .mine { background: #493047; }
+    .sender { font-size: 12px; color: #ffb4ce; margin-bottom: 5px; }
+    #status { font-size: 13px; text-align: center; color: #ffd1df; overflow-wrap: anywhere; }
+    .note { font-size: 12px; color: #b9bfd0; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>❤️ Eternity</h1>
+    <p class="subtitle">A little place for just us.</p><section id="login">
+  <input id="email" type="email" placeholder="Email address" autocomplete="username">
+  <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+  <button id="loginBtn">Log In</button>
+</section>
+
+<section id="chat">
+  <p id="who" class="subtitle"></p>
+  <div id="messages" aria-live="polite"></div>
+  <input id="messageInput" maxlength="2000" placeholder="Write a message...">
+  <button id="sendBtn">Send ❤️</button>
+  <button id="logoutBtn">Log Out</button>
+  <p class="note">Basic chat prototype. Messages are not yet end-to-end encrypted. Do not use this version for sensitive conversations.</p>
+</section>
+
+<p id="status" role="status">Sign in with one of your two existing accounts.</p>
+
+  </main>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, query, orderBy,
+      onSnapshot, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBqIB8vtiJ58SzmCD_2zWcZF-c1U9R7oq8",
+      authDomain: "eternity-3114.firebaseapp.com",
+      projectId: "eternity-3114",
+      storageBucket: "eternity-3114.firebasestorage.app",
+      messagingSenderId: "10993754208",
+      appId: "1:10993754208:web:e219b378c70cc09e892305"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const el = id => document.getElementById(id);
+    let unsubscribe = null;
+
+    el("loginBtn").addEventListener("click", async () => {
+      const email = el("email").value.trim();
+      const password = el("password").value;
+      if (!email || !password) {
+        el("status").textContent = "Email aur password dono likho.";
+        return;
+      }
+      el("loginBtn").disabled = true;
+      el("status").textContent = "Logging in...";
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        el("status").textContent = "";
+      } catch (error) {
+        el("status").textContent = "Login failed: " + error.message;
+      } finally {
+        el("loginBtn").disabled = false;
+      }
+    });
+
+    el("password").addEventListener("keydown", event => {
+      if (event.key === "Enter") el("loginBtn").click();
+    });
+
+    onAuthStateChanged(auth, user => {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      el("login").style.display = user ? "none" : "block";
+      el("chat").style.display = user ? "block" : "none";
+      el("status").textContent = user ? "" : "Sign in with one of your two existing accounts.";
+
+      if (!user) return;
+
+      el("who").textContent = "Signed in as " + (user.email || "member");
+      const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+
+      unsubscribe = onSnapshot(q, snapshot => {
+        const box = el("messages");
+        box.replaceChildren();
+
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const item = document.createElement("div");
+          item.className = "message" + (data.senderUid === user.uid ? " mine" : "");
+
+          const sender = document.createElement("div");
+          sender.className = "sender";
+          sender.textContent = data.sender || "Member";
+
+          const text = document.createElement("div");
+          text.textContent = typeof data.text === "string" ? data.text : "";
+
+          item.append(sender, text);
+          box.append(item);
+        });
+        box.scrollTop = box.scrollHeight;
+      }, error => {
+        el("status").textContent = "Chat load error: " + error.message;
+      });
+    });
+
+    el("sendBtn").addEventListener("click", async () => {
+      const user = auth.currentUser;
+      const text = el("messageInput").value.trim();
+      if (!user || !text) return;
+
+      el("sendBtn").disabled = true;
+      try {
+        await addDoc(collection(db, "messages"), {
+          text,
+          sender: user.email || "Member",
+          senderUid: user.uid,
+          createdAt: serverTimestamp()
+        });
+        el("messageInput").value = "";
+        el("status").textContent = "";
+      } catch (error) {
+        el("status").textContent = "Message send nahi hua: " + error.message;
+      } finally {
+        el("sendBtn").disabled = false;
+      }
+    });
+
+    el("messageInput").addEventListener("keydown", event => {
+      if (event.key === "Enter") el("sendBtn").click();
+    });
+
+    el("logoutBtn").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        el("status").textContent = "Logout error: " + error.message;
+      }
+    });
+  </script></body>
+</html>
